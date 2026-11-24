@@ -1,0 +1,26 @@
+PROJETO 100 KG — VERSÃO INSTALÁVEL (PWA)
+
+O que está incluído:
+- Registro de peso e gráfico
+- Diário de calorias por data
+- Registro de musculação, esteira, bicicleta e outros treinos
+- Histórico e backup/restauração dos dados
+- Interface adaptada para celular e uso offline após a primeira abertura
+
+IMPORTANTE:
+Para instalar como aplicativo no Android, os arquivos precisam estar publicados em um endereço HTTPS.
+Abrir o index.html diretamente não permite instalar o PWA, pois o service worker exige HTTPS (ou localhost).
+
+Publicação simples:
+1. Crie uma conta no GitHub e um repositório público chamado projeto-100kg.
+2. Envie todos os arquivos desta pasta para a raiz do repositório.
+3. Em Settings > Pages, escolha Deploy from a branch, selecione main e /(root), e salve.
+4. Aguarde a publicação. O GitHub fornecerá um endereço HTTPS.
+5. Abra esse endereço no Chrome do Android, toque no menu ⋮ e escolha "Instalar app" ou "Adicionar à tela inicial".
+
+DADOS E PRIVACIDADE:
+Os dados são armazenados localmente no navegador/aparelho (localStorage). Não há conta, nuvem ou sincronização automática entre aparelhos.
+Use "Exportar backup" regularmente e guarde o arquivo em local seguro. Limpar os dados do navegador pode apagar os registros.
+
+O peso inicial de referência está configurado em 119,4 kg e a meta em 100 kg.
+A meta calórica exibida está configurada em 1.500 kcal e pode ser ajustada no código.
