@@ -56,4 +56,98 @@ const metTable={strength:{light:3,moderate:4.5,vigorous:6},treadmill:{light:4,mo
 function addWorkout(){let date=$('summaryDate').value||today,type=$('workType').value,minutes=Number($('workMinutes').value),intensity=$('workIntensity').value,note=$('workNote').value.trim();if(!minutes||minutes<1||minutes>600)return alert('Informe uma duração válida (1 a 600 minutos).');let met=metTable[type][intensity],kcal=Math.round(Math.max(0,(met-1)*currentWeight()*minutes/60));db.workouts.push({date,type:workNames[type],typeKey:type,minutes,intensity,met,kcal,note});$('workEstimate').textContent=`Estimativa: aproximadamente ${fmt(kcal)} kcal adicionais (gasto líquido).`;$('workMinutes').value='';$('workNote').value='';save()}
 function del(kind,index){if(!confirm('Excluir este registro?'))return;db[kind].splice(index,1);save()}
 function render(){let ws=[...db.weights].sort((a,b)=>a.date.localeCompare(b.date)),last=ws.at(-1)?.value,initial=ws[0]?.value,done=initial!=null&&last!=null?initial-last:0,remaining=last!=null?last-100:null,pct=initial!=null&&initial>100?Math.max(0,Math.min(100,done/(initial-100)*100)):0;$('current').textContent=last!=null?dec(last)+' kg':'—';$('remaining').textContent=remaining!=null?dec(remaining)+' kg':'—';$('progressText').textContent=dec(pct)+'%';$('progress').style.width=pct+'%';
-let date=$('summaryDate').value||today,foods=db.foods.filter(x=>x.date===date),total=foods.reduce((s,x)=>s+Number(x.kcal||0),0),works=db.workouts.filter(x=>x.date===date),exercise=works.reduce((s,x)=>s+exerciseNet(x),0),basal=bmr(),base=baseBurn(),burn=base+exercise,deficit=burn-total,balance=total-burn,goal=Number(db.settings.goal)||1500;$('goalLabel').textContent=fmt(goal);$('sumFood').textContent=fmt(total)+' kcal';$('sumBmr').textContent=fmt(basal);$('sumBase').textContent=fmt(base);$('sumExercise').textContent=fmt(exercise)+' kcal';$('sumBurn').textContent=fmt(burn)+' kcal';$('sumIntake').textContent=fmt(total)+' kcal';$('sumDeficit').textContent=(deficit>=0?fmt(deficit):'+'+fmt(Math.abs(deficit)))+' kcal';$('sumDeficit').className='metric '+(deficit>=0?'green':'red');$('sumBalance').textContent=(balance>0?'+':'')+fmt(balance)+' kcal';$('sumBalance').className=balance<=0?'green':'red';$('foodBar').style.width=Math.min(100,total/goal*100)+'%';$('dayVerdict').textContent=total===0?'Registre sua alimentação':deficit>0?'Déficit energético estimado':'Sem déficit estimado';let advice=total===0?'Registre suas refeições para avaliar o dia.':deficit>1000?'O déficit estimado está muito elevado. Evite tentar acelerar o emagrecimento com restrição excessiva.':deficit>0?'O dia 
+let date=$('summaryDate').value||today,foods=db.foods.filter(x=>x.date===date),total=foods.reduce((s,x)=>s+Number(x.kcal||0),0),works=db.workouts.filter(x=>x.date===date),exercise=works.reduce((s,x)=>s+exerciseNet(x),0),basal=bmr(),base=baseBurn(),burn=base+exercise,deficit=burn-total,balance=total-burn,goal=Number(db.settings.goal)||1500;$('goalLabel').textContent=fmt(goal);$('sumFood').textContent=fmt(total)+' kcal';$('sumBmr').textContent=fmt(basal);$('sumBase').textContent=fmt(base);$('sumExercise').textContent=fmt(exercise)+' kcal';$('sumBurn').textContent=fmt(burn)+' kcal';$('sumIntake').textContent=fmt(total)+' kcal';$('sumDeficit').textContent=(deficit>=0?fmt(deficit):'+'+fmt(Math.abs(deficit)))+' kcal';$('sumDeficit').className='metric '+(deficit>=0?'green':'red');$('sumBalance').textContent=(balance>0?'+':'')+fmt(balance)+' kcal';$('sumBalance').className=balance<=0?'green':'red';$('foodBar').style.width=Math.min(100,total/goal*100)+'%';$('dayVerdict').textContent=total===0?'Registre sua alimentação':deficit>0?'Déficit energético estimado':'Sem déficit estimado';let advice=total===0?'Registre suas refeições para avaliar o dia.':deficit>1000?'O déficit estimado está muito elevado. Evite tentar acelerar o emagrecimento com restrição excessiva.':deficit>0?'O dia apresenta déficit energético estimado. Observe a média da semana, não apenas um dia.':'O gasto estimado não superou a ingestão. Um dia isolado não define seu progresso.';$('dailyAdvice').textContent=advice;
+$('foodList').innerHTML=foods.length?'<table><tbody>'+foods.map(x=>`<tr><td>${esc(x.name)}<div class="small">${x.source==='IA'?'Estimativa por IA':'Registro manual'}</div></td><td>${fmt(x.kcal)} kcal</td><td><button class="danger" style="width:auto;padding:5px 8px;margin:0" onclick="del('foods',${db.foods.indexOf(x)})">×</button></td></tr>`).join('')+'</tbody></table>':'<div class="empty">Nenhuma refeição registrada nesta data.</div>';
+$('workList').innerHTML=works.length?'<table><tbody>'+works.map(x=>`<tr><td>${esc(x.type)}<div class="small">${x.minutes} min · ${esc(x.intensity||'moderada')} ${x.note?'· '+esc(x.note):''}</div></td><td>~${fmt(exerciseNet(x))} kcal</td><td><button class="danger" style="width:auto;padding:5px 8px;margin:0" onclick="del('workouts',${db.workouts.indexOf(x)})">×</button></td></tr>`).join('')+'</tbody></table>':'<div class="empty">Nenhum treino nesta data.</div>';
+$('weightHistory').innerHTML=ws.length?'<table><tbody>'+ws.slice().reverse().map(x=>`<tr><td>${dateBR(x.date)}</td><td>${dec(x.value)} kg</td><td><button class="danger" style="width:auto;padding:5px 8px;margin:0" onclick="del('weights',${db.weights.indexOf(x)})">×</button></td></tr>`).join('')+'</tbody></table>':'<div class="empty">Nenhuma pesagem.</div>';
+let recent=[...db.workouts].sort((a,b)=>b.date.localeCompare(a.date));$('recentWorkouts').innerHTML=recent.length?'<table><tbody>'+recent.slice(0,10).map(x=>`<tr><td>${dateBR(x.date)} · ${esc(x.type)} · ${x.minutes} min</td><td>~${fmt(exerciseNet(x))} kcal</td></tr>`).join('')+'</tbody></table>':'<div class="empty">Nenhum treino registrado.</div>';draw(ws)}
+function draw(ws){let c=$('chart'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);if(!ws.length){ctx.fillStyle='#a8b8ae';ctx.font='14px system-ui';ctx.fillText('Suas pesagens aparecerão aqui.',15,35);return}let vals=ws.map(x=>x.value),min=Math.min(...vals,100)-1,max=Math.max(...vals)+1;if(max===min)max=min+1;ctx.strokeStyle='#385345';ctx.lineWidth=1;for(let i=0;i<5;i++){let y=15+i*(h-40)/4;ctx.beginPath();ctx.moveTo(42,y);ctx.lineTo(w-12,y);ctx.stroke()}ctx.fillStyle='#a8b8ae';ctx.font='14px system-ui';ctx.fillText(dec(max)+' kg',4,22);ctx.fillText(dec(min)+' kg',4,h-22);ctx.strokeStyle='#63d69a';ctx.lineWidth=4;ctx.beginPath();ws.forEach((p,i)=>{let x=48+(ws.length===1?0:i*(w-75)/(ws.length-1)),y=15+(max-p.value)/(max-min)*(h-40);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ws.forEach((p,i)=>{let x=48+(ws.length===1?0:i*(w-75)/(ws.length-1)),y=15+(max-p.value)/(max-min)*(h-40);ctx.fillStyle='#63d69a';ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill()})}
+function saveSettings(){let weight=Number($('cfgWeight').value),age=Number($('cfgAge').value),height=Number($('cfgHeight').value),goal=Number($('cfgGoal').value);if(weight<40||weight>300||age<18||age>100||height<100||height>230||goal<500||goal>6000)return alert('Confira os valores informados.');db.settings={...db.settings,weight,age,height,goal,worker:$('cfgWorker').value.trim()};save();alert('Configurações salvas!')}
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='projeto-100kg-backup.json';a.click();URL.revokeObjectURL(a.href)}function importData(){let f=$('importFile').files[0];if(!f)return alert('Selecione um arquivo de backup.');let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.weights||!x.foods||!x.workouts)throw 0;db={...defaults,...x,settings:{...defaults.settings,...(x.settings||{})}};save();alert('Backup restaurado!')}catch(e){alert('Arquivo de backup inválido.')}};r.readAsText(f)}function resetApp(){if(!confirm('Apagar todas as pesagens, refeições e treinos? Esta ação não pode ser desfeita.'))return;db={...defaults,settings:{...defaults.settings}};localStorage.setItem(KEY,JSON.stringify(db));render();alert('Aplicativo resetado!')}
+
+// Sincronização Supabase: a chave pública fica neste aparelho; o acesso aos dados é protegido por RLS.
+const SUPABASE_URL='https://bapgeagbkaosbqczhqjx.supabase.co';
+const SB_KEY_STORAGE='projeto100kg_supabase_publishable';
+let sbClient=null, cloudUser=null, cloudTimer=null, cloudBusy=false;
+function cloudMessage(t){$('cloudStatus').textContent=t}
+function getSupabase(){
+  const key=$('sbKey').value.trim()||localStorage.getItem(SB_KEY_STORAGE)||'';
+  if(!key){cloudMessage('Cole sua Publishable key para conectar.');return null}
+  if(!window.supabase?.createClient){cloudMessage('Não foi possível carregar a biblioteca de conexão. Verifique a internet e atualize a página.');return null}
+  localStorage.setItem(SB_KEY_STORAGE,key);
+  if(!sbClient) sbClient=window.supabase.createClient(SUPABASE_URL,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  return sbClient;
+}
+async function cloudSignUp(){
+  const c=getSupabase();if(!c)return;
+  const email=$('cloudEmail').value.trim(),password=$('cloudPassword').value;
+  if(!email||password.length<6)return alert('Informe um e-mail válido e uma senha com pelo menos 6 caracteres.');
+  cloudMessage('Criando sua conta…');
+  const {data,error}=await c.auth.signUp({email,password});
+  if(error){cloudMessage('Erro: '+error.message);return}
+  if(data.session){cloudUser=data.user;await afterCloudLogin()}else cloudMessage('Cadastro iniciado. Confira seu e-mail para confirmar a conta e depois entre pelo aplicativo.');
+}
+async function cloudSignIn(){
+  const c=getSupabase();if(!c)return;
+  const email=$('cloudEmail').value.trim(),password=$('cloudPassword').value;
+  if(!email||!password)return alert('Informe seu e-mail e sua senha.');
+  cloudMessage('Entrando…');
+  const {data,error}=await c.auth.signInWithPassword({email,password});
+  if(error){cloudMessage('Erro: '+error.message);return}
+  cloudUser=data.user;await afterCloudLogin();
+}
+async function afterCloudLogin(){
+  $('cloudSyncBtn').disabled=false;$('cloudOutBtn').disabled=false;
+  cloudMessage('Conectado como '+cloudUser.email+'. Verificando seus registros na nuvem…');
+  const c=sbClient, uid=cloudUser.id;
+  const checks=await Promise.all(['weights','foods','workouts'].map(t=>c.from(t).select('id',{count:'exact',head:true})));
+  const err=checks.find(x=>x.error);if(err){cloudMessage('Falha ao consultar a nuvem: '+err.error.message);return}
+  const cloudCount=checks.reduce((n,x)=>n+(x.count||0),0);
+  const localCount=db.weights.length+db.foods.length+db.workouts.length;
+  if(cloudCount===0 && localCount>0){
+    if(confirm('A nuvem está vazia e este aparelho tem '+localCount+' registros. Deseja enviar todos eles para a nuvem agora?')) await pushAllToCloud();
+    else cloudMessage('Conectado. Seus registros locais foram mantidos; use “Sincronizar agora” para enviá-los quando quiser.');
+  } else if(cloudCount>0){await pullFromCloud();}
+  else cloudMessage('Conectado. Ainda não há registros; seus próximos lançamentos serão sincronizados.');
+}
+async function pushAllToCloud(){
+  if(!cloudUser||!sbClient)return;
+  cloudMessage('Enviando registros para a nuvem…');const uid=cloudUser.id;
+  const rows={
+    weights:db.weights.map(x=>({user_id:uid,date:x.date,value:Number(x.value)})),
+    foods:db.foods.map(x=>({user_id:uid,date:x.date,name:x.name,kcal:Number(x.kcal),detail:x.detail||null,source:x.source||'manual'})),
+    workouts:db.workouts.map(x=>({user_id:uid,date:x.date,type:x.type,minutes:Number(x.minutes),note:x.note||null,calories:Number(x.kcal||0),intensity:x.intensity||'moderate',met:Number(x.met||3),type_key:x.typeKey||null}))
+  };
+  for(const t of ['weights','foods','workouts']){
+    const del=await sbClient.from(t).delete().eq('user_id',uid);if(del.error){cloudMessage('Erro ao preparar '+t+': '+del.error.message);return}
+    if(rows[t].length){const ins=await sbClient.from(t).insert(rows[t]);if(ins.error){cloudMessage('Erro ao enviar '+t+': '+ins.error.message);return}}
+  }
+  const setting={user_id:uid,weight:Number(db.settings.weight),age:Number(db.settings.age),height:Number(db.settings.height),goal:Number(db.settings.goal),worker:db.settings.worker||'',updated_at:new Date().toISOString()};
+  const sr=await sbClient.from('user_settings').upsert(setting);if(sr.error){cloudMessage('Registros enviados, mas houve erro nas configurações: '+sr.error.message);return}
+  cloudMessage('Sincronização concluída! '+(rows.weights.length+rows.foods.length+rows.workouts.length)+' registros salvos na nuvem.');
+}
+async function pullFromCloud(){
+  if(!cloudUser||!sbClient)return;
+  cloudMessage('Baixando seus registros da nuvem…');const uid=cloudUser.id;
+  const [w,f,t,st]=await Promise.all([
+    sbClient.from('weights').select('*').eq('user_id',uid).order('date'),
+    sbClient.from('foods').select('*').eq('user_id',uid).order('date'),
+    sbClient.from('workouts').select('*').eq('user_id',uid).order('date'),
+    sbClient.from('user_settings').select('*').eq('user_id',uid).maybeSingle()
+  ]);
+  const error=[w,f,t,st].find(x=>x.error);if(error){cloudMessage('Erro ao carregar dados: '+error.error.message);return}
+  db.weights=(w.data||[]).map(x=>({date:x.date,value:Number(x.value)}));
+  db.foods=(f.data||[]).map(x=>({date:x.date,name:x.name,kcal:Number(x.kcal),detail:x.detail||'',source:x.source||'manual'}));
+  db.workouts=(t.data||[]).map(x=>({date:x.date,type:x.type,typeKey:x.type_key||'other',minutes:Number(x.minutes),note:x.note||'',intensity:x.intensity||'moderate',met:Number(x.met||3),kcal:Number(x.calories||0)}));
+  if(st.data)db.settings={...db.settings,weight:Number(st.data.weight||db.settings.weight),age:Number(st.data.age||db.settings.age),height:Number(st.data.height||db.settings.height),goal:Number(st.data.goal||db.settings.goal),worker:st.data.worker||db.settings.worker};
+  localStorage.setItem(KEY,JSON.stringify(db));$('cfgWeight').value=db.settings.weight;$('cfgAge').value=db.settings.age;$('cfgHeight').value=db.settings.height;$('cfgGoal').value=db.settings.goal;$('cfgWorker').value=db.settings.worker||'';render();
+  cloudMessage('Dados carregados da nuvem neste aparelho. '+(db.weights.length+db.foods.length+db.workouts.length)+' registros.');
+}
+function scheduleCloudSync(){if(!cloudUser||!sbClient)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>{if(!cloudBusy){cloudBusy=true;pushAllToCloud().finally(()=>cloudBusy=false)}},1200)}
+async function syncNow(){if(!cloudUser)return cloudMessage('Entre na sua conta primeiro.');if(cloudBusy)return cloudMessage('Sincronização em andamento…');cloudBusy=true;try{await pushAllToCloud()}finally{cloudBusy=false}}
+async function cloudSignOut(){if(!sbClient)return;await sbClient.auth.signOut();cloudUser=null;$('cloudSyncBtn').disabled=true;$('cloudOutBtn').disabled=true;cloudMessage('Você saiu da conta. Os dados locais permanecem neste aparelho.')}
+async function initCloud(){const key=localStorage.getItem(SB_KEY_STORAGE);if(key)$('sbKey').value=key;const c=getSupabase();if(!c)return;const {data}=await c.auth.getSession();if(data.session){cloudUser=data.session.user;await afterCloudLogin()}}
+
+$('summaryDate').addEventListener('change',render);$('cfgWeight').value=db.settings.weight;$('cfgAge').value=db.settings.age;$('cfgHeight').value=db.settings.height;$('cfgGoal').value=db.settings.goal;$('cfgWorker').value=db.settings.worker||'';
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));render();initCloud();
+</script></body></html>
